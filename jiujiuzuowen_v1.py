@@ -67,7 +67,7 @@ def extract_article_list(page_url: str):
     # p1.join()
 
 
-def extract_content(article_url: str, proxies):
+def extract_content(article_url: str):
     if random.random() > 0.5:
         time.sleep(random.random())
     try:
