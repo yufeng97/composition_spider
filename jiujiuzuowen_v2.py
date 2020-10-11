@@ -39,6 +39,8 @@ class CrawlPageThread(Thread):
                     self.data_queue.put(response)
                 except Exception as e:
                     print('下载出现异常', e)
+                    handle_exception("page", page)
+                    self.queue.put(page)
 
 
 class ParsePageThread(Thread):
@@ -72,6 +74,8 @@ class ParsePageThread(Thread):
 
 
 class CrawlArticleThread(Thread):
+    Finished = False
+
     def __init__(self, thread_id, queue: Queue, article_data_queue: Queue):
         super().__init__()
         self.thread_id = thread_id
@@ -88,13 +92,15 @@ class CrawlArticleThread(Thread):
             if ParsePageThread.Finished and self.queue.empty():
                 break
             else:
-                page = self.queue.get()
-                print('下载线程为：', self.thread_id, " 下载Article页面：", page)
+                article = self.queue.get()
+                print('下载线程为：', self.thread_id, " 下载Article页面：", article)
                 try:
-                    response = fetch(page)
+                    response = fetch(article)
                     self.data_queue.put(response)
                 except Exception as e:
                     print('下载出现异常', e)
+                    handle_exception("article", article)
+                    self.queue.put(article)
 
 
 class ParseArticleThread(Thread):
@@ -105,7 +111,7 @@ class ParseArticleThread(Thread):
 
     def run(self) -> None:
         print(f'启动线程：{self.thread_id}')
-        while True:
+        while not CrawlArticleThread.Finished:
             try:
                 item = self.queue.get(False)
                 if not item:
@@ -202,6 +208,22 @@ def save(category, filename, context, author=None):
     print("{} saved".format(filepath))
 
 
+def handle_exception(type_, url):
+    if type_ == "page":
+        with open("./failed_page.txt", "a") as f:
+            f.writelines("{}\n".format(url))
+    elif type_ == "article":
+        with open("./failed_url.txt", "a") as f:
+            f.writelines("{}\n".format(url))
+
+
+def initialize_failure_log():
+    f1 = open("./failed_page.txt", "w")
+    f1.close()
+    f2 = open("./failed_url.txt", "w")
+    f2.close()
+
+
 def main():
     category_urls = [url for url in parse_index(BASE_URL)]
 
@@ -209,6 +231,11 @@ def main():
     page_data_queue = Queue()
     article_queue = Queue()
     article_data_queue = Queue()
+
+    CRAWL_PAGE_THREADINGS = 4
+    PARSE_PAGE_THREADINGS = 4
+    CRAWL_ARTICLE_THREADINGS = 16
+    PARSE_ARTICLE_THREADINGS = 16
 
     with ThreadPoolExecutor(8) as executor:
         futures = []
@@ -223,29 +250,31 @@ def main():
 
     print(page_queue.qsize())
 
+    initialize_failure_log()
+
     crawls_page_threads = []
-    crawls_page_names = ['crawl_page_{}'.format(i) for i in range(1, 7)]
+    crawls_page_names = ['crawl_page_{}'.format(i) for i in range(1, CRAWL_PAGE_THREADINGS + 1)]
     for thread_id in crawls_page_names:
         thread = CrawlPageThread(thread_id, page_queue, page_data_queue)
         thread.start()
         crawls_page_threads.append(thread)
 
     parse_page_threads = []
-    parse_page_names = ['parse_page_{}'.format(i) for i in range(1, 3)]
+    parse_page_names = ['parse_page_{}'.format(i) for i in range(1, PARSE_PAGE_THREADINGS + 1)]
     for thread_id in parse_page_names:
         thread = ParsePageThread(thread_id, page_data_queue, article_queue)
         thread.start()
         parse_page_threads.append(thread)
 
     crawls_article_threads = []
-    crawls_article_names = ['crawl_article_{}'.format(i) for i in range(1, 11)]
+    crawls_article_names = ['crawl_article_{}'.format(i) for i in range(1, CRAWL_ARTICLE_THREADINGS + 1)]
     for thread_id in crawls_article_names:
         thread = CrawlArticleThread(thread_id, article_queue, article_data_queue)
         thread.start()
         crawls_article_threads.append(thread)
 
     parse_article_threads = []
-    parse_article_names = ['parse_article_{}'.format(i) for i in range(1, 5)]
+    parse_article_names = ['parse_article_{}'.format(i) for i in range(1, PARSE_ARTICLE_THREADINGS + 1)]
     for thread_id in parse_article_names:
         thread = ParseArticleThread(thread_id, article_data_queue)
         thread.start()
@@ -263,11 +292,10 @@ def main():
 
     for t in crawls_article_threads:
         t.join()
+    CrawlArticleThread.Finished = True
 
     for t in parse_article_threads:
         t.join()
-
-    # print(len(article_urls))
 
 
 if __name__ == '__main__':
