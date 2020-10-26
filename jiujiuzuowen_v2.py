@@ -205,18 +205,18 @@ def save(category, filename, context, author=None):
     filepath = os.path.join(dir_path, filename + ".txt")
     with open(filepath, "w", encoding="utf-8") as f:
         if author:
-            f.write("作者： {}\n".format(author))
+            f.write(f"作者： {author}\n")
         f.write(context)
-    print("{} saved".format(filepath))
+    print(f"{filepath} saved")
 
 
 def handle_exception(type_, url):
     if type_ == "page":
         with open("./failed_page.txt", "a") as f:
-            f.writelines("{}\n".format(url))
+            f.writelines(f"{url}\n")
     elif type_ == "article":
         with open("./failed_url.txt", "a") as f:
-            f.writelines("{}\n".format(url))
+            f.writelines(f"{url}\n")
 
 
 def initialize_failure_log():
@@ -255,28 +255,28 @@ def main():
     initialize_failure_log()
 
     crawls_page_threads = []
-    crawls_page_names = ['crawl_page_{}'.format(i) for i in range(1, CRAWL_PAGE_THREADINGS + 1)]
+    crawls_page_names = [f'crawl_page_{i}' for i in range(1, CRAWL_PAGE_THREADINGS + 1)]
     for thread_id in crawls_page_names:
         thread = CrawlPageThread(thread_id, page_queue, page_data_queue)
         thread.start()
         crawls_page_threads.append(thread)
 
     parse_page_threads = []
-    parse_page_names = ['parse_page_{}'.format(i) for i in range(1, PARSE_PAGE_THREADINGS + 1)]
+    parse_page_names = [f'parse_page_{i}' for i in range(1, PARSE_PAGE_THREADINGS + 1)]
     for thread_id in parse_page_names:
         thread = ParsePageThread(thread_id, page_data_queue, article_queue)
         thread.start()
         parse_page_threads.append(thread)
 
     crawls_article_threads = []
-    crawls_article_names = ['crawl_article_{}'.format(i) for i in range(1, CRAWL_ARTICLE_THREADINGS + 1)]
+    crawls_article_names = [f'crawl_article_{i}' for i in range(1, CRAWL_ARTICLE_THREADINGS + 1)]
     for thread_id in crawls_article_names:
         thread = CrawlArticleThread(thread_id, article_queue, article_data_queue)
         thread.start()
         crawls_article_threads.append(thread)
 
     parse_article_threads = []
-    parse_article_names = ['parse_article_{}'.format(i) for i in range(1, PARSE_ARTICLE_THREADINGS + 1)]
+    parse_article_names = [f'parse_article_{i}' for i in range(1, PARSE_ARTICLE_THREADINGS + 1)]
     for thread_id in parse_article_names:
         thread = ParseArticleThread(thread_id, article_data_queue)
         thread.start()
