@@ -30,10 +30,11 @@ class CrawlPageThread(Thread):
     def scheduler(self):
         while True:
             if self.queue.empty():
+                CrawlPageThread.Finished = True
                 break
             else:
                 page = self.queue.get()
-                print('下载线程为：', self.thread_id, " 下载Page页面：", page)
+                print(f'下载线程为： {self.thread_id} 下载Page页面： {page}')
                 try:
                     response = fetch(page)
                     self.data_queue.put(response)
@@ -63,7 +64,7 @@ class ParsePageThread(Thread):
                 self.parse(item)
                 self.queue.task_done()
             except Exception as e:
-                pass
+                print(e)
         print(f'结束线程：{self.thread_id}')
 
     def parse(self, item):
@@ -90,10 +91,11 @@ class CrawlArticleThread(Thread):
     def scheduler(self):
         while True:
             if ParsePageThread.Finished and self.queue.empty():
+                CrawlArticleThread.Finished = True
                 break
             else:
                 article = self.queue.get()
-                print('下载线程为：', self.thread_id, " 下载Article页面：", article)
+                print(f'下载线程为： {self.thread_id} 下载Article页面： {article}')
                 try:
                     response = fetch(article)
                     self.data_queue.put(response)
@@ -116,7 +118,7 @@ class ParseArticleThread(Thread):
                 item = self.queue.get(False)
                 if not item:
                     continue
-                print("解析Article页面：", item.url)
+                print(f'解析Article页面： {item.url}')
                 self.parse(item)
                 self.queue.task_done()
             except Exception as e:
