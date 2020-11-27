@@ -1,4 +1,5 @@
 import os
+import re
 import requests
 import math
 from lxml.etree import HTML
@@ -13,7 +14,6 @@ index = "www.jiujiuzuowen.com"
 
 
 class CrawlPageThread(Thread):
-
     Finished = False
 
     def __init__(self, thread_id, queue: Queue, page_data_queue: Queue):
@@ -57,14 +57,14 @@ class ParsePageThread(Thread):
         print(f'启动线程：{self.thread_id}')
         while not CrawlPageThread.Finished:
             try:
-                item = self.queue.get(False)
+                item = self.queue.get()
                 if not item:
                     continue
                 print("解析Page页面：", item.url)
                 self.parse(item)
                 self.queue.task_done()
             except Exception as e:
-                print(e)
+                pass
         print(f'结束线程：{self.thread_id}')
 
     def parse(self, item):
@@ -115,7 +115,7 @@ class ParseArticleThread(Thread):
         print(f'启动线程：{self.thread_id}')
         while not CrawlArticleThread.Finished:
             try:
-                item = self.queue.get(False)
+                item = self.queue.get()
                 if not item:
                     continue
                 print(f'解析Article页面： {item.url}')
@@ -196,18 +196,33 @@ def parse_article(url):
     save(category, title, content, author)
 
 
-def save(category, filename, context, author=None):
+def save(category, filename: str, context, author=None):
     if not context:
         return
     dir_path = os.path.join("outputs", index, category)
     if not os.path.exists(dir_path):
         os.makedirs(dir_path)
     filepath = os.path.join(dir_path, filename + ".txt")
+    filepath = check_filename_available(filepath)
     with open(filepath, "w", encoding="utf-8") as f:
         if author:
             f.write(f"作者： {author}\n")
         f.write(context)
     print(f"{filepath} saved")
+
+
+def check_filename_available(path):
+    directory, file_name = os.path.split(path)
+    pattern = r'(\d+)\)\.'
+    while os.path.isfile(path):
+        if re.search(pattern, file_name) is None:
+            file_name = file_name.replace('.', '(1).')
+        else:
+            current_num = int(re.findall(pattern, file_name)[-1])
+            new_num = current_num + 1
+            file_name = file_name.replace(f'({current_num}).', f'({new_num}).')
+        path = os.path.join(directory + os.sep + file_name)
+    return path
 
 
 def handle_exception(type_, url):
@@ -227,7 +242,9 @@ def initialize_failure_log():
 
 
 def main():
-    category_urls = [url for url in parse_index(BASE_URL)]
+    # category_urls = [url for url in parse_index(BASE_URL)]
+    category_urls = ['https://www.jiujiuzuowen.com/category/yanjianggao.html',
+                     'https://www.jiujiuzuowen.com/category/sanwen.html']
 
     page_queue = Queue()
     page_data_queue = Queue()
@@ -236,8 +253,8 @@ def main():
 
     CRAWL_PAGE_THREADINGS = 4
     PARSE_PAGE_THREADINGS = 4
-    CRAWL_ARTICLE_THREADINGS = 16
-    PARSE_ARTICLE_THREADINGS = 16
+    CRAWL_ARTICLE_THREADINGS = 8
+    PARSE_ARTICLE_THREADINGS = 8
 
     with ThreadPoolExecutor(8) as executor:
         futures = []
