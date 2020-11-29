@@ -196,7 +196,7 @@ def parse_article(url):
     save(category, title, content, author)
 
 
-def save(category, filename: str, context, author=None):
+def save(category, filename: str, context, title=None, author=None):
     if not context:
         return
     dir_path = os.path.join("outputs", index, category)
@@ -205,6 +205,8 @@ def save(category, filename: str, context, author=None):
     filepath = os.path.join(dir_path, filename + ".txt")
     filepath = check_filename_available(filepath)
     with open(filepath, "w", encoding="utf-8") as f:
+        if title:
+            f.write(f'{title}\n')
         if author:
             f.write(f"作者： {author}\n")
         f.write(context)
@@ -242,9 +244,9 @@ def initialize_failure_log():
 
 
 def main():
-    # category_urls = [url for url in parse_index(BASE_URL)]
-    category_urls = ['https://www.jiujiuzuowen.com/category/yanjianggao.html',
-                     'https://www.jiujiuzuowen.com/category/sanwen.html']
+    category_urls = [url for url in parse_index(BASE_URL)]
+    # category_urls = ['https://www.jiujiuzuowen.com/category/yanjianggao.html',
+    #                  'https://www.jiujiuzuowen.com/category/sanwen.html']
 
     page_queue = Queue()
     page_data_queue = Queue()
